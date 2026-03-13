@@ -8,8 +8,8 @@
 - здесь не возвращаемся к обновлению ядра или позднему reboot ради `AmneziaWG`.
 
 ## Входные условия
-- Выполнен этап из [docs/ServerPreparation.md](/home/az/git/awg/docs/ServerPreparation.md).
-- Выполнен этап из [docs/BootstrapSSH.md](/home/az/git/awg/docs/BootstrapSSH.md).
+- Выполнен этап из [docs/ServerPreparation.md](ServerPreparation.md).
+- Выполнен этап из [docs/BootstrapSSH.md](BootstrapSSH.md).
 - На этапе подготовки сервера уже проверены kernel/headers и ранняя установка `AmneziaWG`.
 - Есть рабочий вход по SSH новым административным пользователем.
 - Новый SSH-порт уже проверен отдельным повторным входом с локальной машины.

@@ -4,7 +4,7 @@
 Установить `AmneziaWG` на сервер `Debian 12` по основному сценарию `A`: через официальный пакетный путь, проверить наличие модуля ядра и утилит `awg`/`awg-quick`, а также подготовить переход к настройке серверного конфига.
 
 ## Входные условия
-- Выполнен этап из [docs/ServerPreparation.md](/home/az/git/awg/docs/ServerPreparation.md).
+- Выполнен этап из [docs/ServerPreparation.md](ServerPreparation.md).
 - На раннем этапе еще допустима работа под `root`.
 - Целевая ОС: `Debian 12`.
 - Для первой версии выбран основной сценарий установки через пакетный путь.
@@ -137,7 +137,7 @@ sudo apt install -y amneziawg
 - если в процессе установки обновляется DKMS-модуль, дождитесь полного завершения сборки;
 - если установка завершилась ошибкой на этапе DKMS, не переходите сразу к fallback;
 - сначала проверьте, не требуется ли более новое ядро и корректные headers;
-- только после нормализации ядра и повторной попытки переходите к fallback-сценарию из [docs/AmneziaWGManualBuild.md](/home/az/git/awg/docs/AmneziaWGManualBuild.md).
+- только после нормализации ядра и повторной попытки переходите к fallback-сценарию из [docs/AmneziaWGManualBuild.md](AmneziaWGManualBuild.md).
 
 ## Шаг 8. Проверка загрузки модуля ядра
 После установки проверяем, что модуль доступен ядру.
@@ -222,7 +222,7 @@ sudo dmesg | tail -n 50
 - можно переходить к созданию серверного конфига и запуску интерфейса.
 
 ## Fallback на вариант B
-Если основной сценарий не сработал, переходите к [docs/AmneziaWGManualBuild.md](/home/az/git/awg/docs/AmneziaWGManualBuild.md).
+Если основной сценарий не сработал, переходите к [docs/AmneziaWGManualBuild.md](AmneziaWGManualBuild.md).
 
 Типовые причины перехода на fallback:
 - пакет `amneziawg` недоступен через `APT`;

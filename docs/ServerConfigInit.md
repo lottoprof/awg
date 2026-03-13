@@ -8,7 +8,7 @@
 - `/var/lib/amnezia/qr`
 - `/var/lib/amnezia/state`
 
-Этот этап не дублирует [docs/ServerLayout.md](/home/az/git/awg/docs/ServerLayout.md): там зафиксировано, где что должно лежать, а здесь описано, как это создать впервые.
+Этот этап не дублирует [docs/ServerLayout.md](ServerLayout.md): там зафиксировано, где что должно лежать, а здесь описано, как это создать впервые.
 
 ## Входные условия
 - Выполнен этап подготовки сервера.
@@ -16,7 +16,7 @@
 - Выполнен этап сетевой подготовки.
 - `AmneziaWG` установлен.
 - Есть root-доступ или `sudo`.
-- Принят формат из [docs/ServerConfigFormat.md](/home/az/git/awg/docs/ServerConfigFormat.md).
+- Принят формат из [docs/ServerConfigFormat.md](ServerConfigFormat.md).
 
 ## Шаг 1. Создание каталогов
 Создаем целевую структуру каталогов.
@@ -28,7 +28,7 @@ sudo mkdir -p /etc/amnezia/amneziawg
 sudo mkdir -p /var/lib/amnezia/clients
 sudo mkdir -p /var/lib/amnezia/qr
 sudo mkdir -p /var/lib/amnezia/state
-sudo mkdir -p /home/awgesrv/export
+sudo mkdir -p /home/<operator_user>/export
 ```
 
 ## Шаг 2. Выставление прав на каталоги
@@ -46,8 +46,8 @@ sudo chmod 750 /var/lib/amnezia
 sudo chmod 750 /var/lib/amnezia/clients
 sudo chmod 750 /var/lib/amnezia/qr
 sudo chmod 750 /var/lib/amnezia/state
-sudo chown awgesrv:awgesrv /home/awgesrv/export
-sudo chmod 700 /home/awgesrv/export
+sudo chown <operator_user>:<operator_user> /home/<operator_user>/export
+sudo chmod 700 /home/<operator_user>/export
 ```
 
 ## Шаг 3. Генерация серверных ключей
@@ -95,7 +95,7 @@ CLIENTS_DIR=/var/lib/amnezia/clients
 QR_DIR=/var/lib/amnezia/qr
 STATE_DIR=/var/lib/amnezia/state
 REGISTRY_FILE=/var/lib/amnezia/state/clients.tsv
-EXPORT_DIR=/home/awgesrv/export
+EXPORT_DIR=/home/<operator_user>/export
 
 SERVER_AWG_JC=6
 SERVER_AWG_JMIN=50

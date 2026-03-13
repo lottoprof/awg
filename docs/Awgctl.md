@@ -12,7 +12,7 @@
 `awgctl` запускается на рабочем месте оператора и:
 - подключается к серверу по `ssh`;
 - вызывает нужную серверную команду;
-- при необходимости забирает файлы из `/home/awgesrv/export`;
+- при необходимости забирает файлы из `/home/<operator_user>/export`;
 - очищает транзитную серверную зону после успешного получения файлов.
 
 ## Что остается на сервере
@@ -48,7 +48,7 @@ Backend-команды:
 
 Готовое содержимое `/etc/sudoers.d/awg-operator`:
 ```sudoers
-User_Alias AWG_OPERATOR = awgesrv
+User_Alias AWG_OPERATOR = <operator_user>
 Cmnd_Alias AWG_MANAGE = /usr/local/bin/awg-add-client, /usr/local/bin/awg-list-clients, /usr/local/bin/awg-export-client, /usr/local/bin/awg-revoke-client
 
 AWG_OPERATOR ALL=(root) NOPASSWD: AWG_MANAGE
@@ -64,17 +64,17 @@ sudo visudo -c
 
 Проверка:
 ```bash
-sudo -l -U awgesrv
+sudo -l -U <operator_user>
 ```
 
 Ожидаемый результат:
-- пользователь `awgesrv` может выполнять `awg-add-client`, `awg-list-clients`, `awg-export-client`, `awg-revoke-client` без запроса пароля;
+- пользователь `<operator_user>` может выполнять `awg-add-client`, `awg-list-clients`, `awg-export-client`, `awg-revoke-client` без запроса пароля;
 - общий root-доступ и другие команды через `sudo` не выдаются.
 
 ## Что появляется на рабочем месте
 На рабочем месте оператора должны быть:
 - `script_client/awgctl`
-- SSH alias до сервера, например `awgesrv`
+- SSH alias до сервера, например `<server_alias>`
 - локальный каталог `awg_clients/` для полученных файлов
 - `rsync`
 
@@ -96,11 +96,11 @@ sudo -l -U awgesrv
 - локальный каталог для загрузки клиентских файлов.
 
 Пример внутренних вызовов:
-- `ssh awgesrv sudo awg-list-clients`
-- `ssh awgesrv sudo awg-add-client <name>`
-- `ssh awgesrv sudo awg-export-client <client_id>`
-- `ssh awgesrv sudo awg-revoke-client <client_id>`
-- `rsync` для получения файлов из `/home/awgesrv/export`
+- `ssh <server_alias> sudo awg-list-clients`
+- `ssh <server_alias> sudo awg-add-client <name>`
+- `ssh <server_alias> sudo awg-export-client <client_id>`
+- `ssh <server_alias> sudo awg-revoke-client <client_id>`
+- `rsync` для получения файлов из `/home/<operator_user>/export`
 
 ## Команды `awgctl`
 Для первой версии фиксируем такой интерфейс:
@@ -115,7 +115,7 @@ sudo -l -U awgesrv
 
 Внутреннее действие:
 ```bash
-ssh awgesrv sudo awg-list-clients
+ssh <server_alias> sudo awg-list-clients
 ```
 
 Вывод:
@@ -129,10 +129,10 @@ ssh awgesrv sudo awg-list-clients
 Внутренний поток:
 1. Выполнить на сервере:
 ```bash
-ssh awgesrv sudo awg-add-client <name>
+ssh <server_alias> sudo awg-add-client <name>
 ```
-2. Забрать `.conf` и `.png` из `/home/awgesrv/export` на локальную машину через `rsync`.
-3. После успешной передачи удалить remote-копии из `/home/awgesrv/export`.
+2. Забрать `.conf` и `.png` из `/home/<operator_user>/export` на локальную машину через `rsync`.
+3. После успешной передачи удалить remote-копии из `/home/<operator_user>/export`.
 
 Итог:
 - оператор получает локальные файлы без отдельного ручного шага `export-client`.
@@ -144,10 +144,10 @@ ssh awgesrv sudo awg-add-client <name>
 Внутренний поток:
 1. Выполнить на сервере:
 ```bash
-ssh awgesrv sudo awg-export-client <client_id>
+ssh <server_alias> sudo awg-export-client <client_id>
 ```
-2. Забрать `.conf` и `.png` из `/home/awgesrv/export` на локальную машину через `rsync`.
-3. После успешной передачи удалить remote-копии из `/home/awgesrv/export`.
+2. Забрать `.conf` и `.png` из `/home/<operator_user>/export` на локальную машину через `rsync`.
+3. После успешной передачи удалить remote-копии из `/home/<operator_user>/export`.
 
 ## `awgctl revoke-client <client_id>`
 Назначение:
@@ -155,7 +155,7 @@ ssh awgesrv sudo awg-export-client <client_id>
 
 Внутренний вызов:
 ```bash
-ssh awgesrv sudo awg-revoke-client <client_id>
+ssh <server_alias> sudo awg-revoke-client <client_id>
 ```
 
 Результат:
@@ -184,7 +184,7 @@ awgctl add-client <name>
 Что делает система:
 - вызывает на сервере `sudo awg-add-client <name>`;
 - получает `.conf` и `.png` на локальную машину в `awg_clients/`;
-- очищает `/home/awgesrv/export` после успешной передачи.
+- очищает `/home/<operator_user>/export` после успешной передачи.
 
 Что получает оператор:
 - локальные файлы клиента;
@@ -200,7 +200,7 @@ awgctl export-client <client_id>
 Что делает система:
 - вызывает на сервере `sudo awg-export-client <client_id>`;
 - забирает файлы в `awg_clients/`;
-- очищает `/home/awgesrv/export`.
+- очищает `/home/<operator_user>/export`.
 
 Когда использовать:
 - если клиенту нужно повторно отправить конфиг;
@@ -235,7 +235,7 @@ awgctl revoke-client <client_id>
 - `clientNN_name.png`
 
 ## Работа с транзитной зоной сервера
-`/home/awgesrv/export` остается временной зоной выдачи.
+`/home/<operator_user>/export` остается временной зоной выдачи.
 
 Для `awgctl` принимаем правило:
 - если локальная передача завершилась успешно, удалять remote-файлы из `export`;
@@ -254,7 +254,7 @@ awgctl revoke-client <client_id>
 - SSH alias недоступен;
 - серверная backend-команда завершилась ошибкой;
 - клиент не найден;
-- файл не появился в `/home/awgesrv/export`;
+- файл не появился в `/home/<operator_user>/export`;
 - `rsync` завершился ошибкой;
 - удаление remote-файлов после передачи не удалось.
 
@@ -283,7 +283,7 @@ awgctl revoke-client <client_id>
 - Зафиксирована зависимость от `ssh` и `rsync`.
 - Зафиксировано, что локальные операторские скрипты живут в `script_client/`.
 - Зафиксировано, что полученные клиентские файлы складываются в `awg_clients/`.
-- Зафиксировано использование `/home/awgesrv/export` как временной server-side зоны выдачи.
+- Зафиксировано использование `/home/<operator_user>/export` как временной server-side зоны выдачи.
 
 ## Ожидаемый итог
 Локальная операторская оболочка уже имеет зафиксированный контракт и реализуется без двусмысленности.

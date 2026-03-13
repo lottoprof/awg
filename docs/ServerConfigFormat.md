@@ -8,8 +8,8 @@
 Эти файлы являются источником истины для работы `AWG` и shell-автоматизации.
 
 ## Входные условия
-- Принята структура из [docs/ServerLayout.md](/home/az/git/awg/docs/ServerLayout.md).
-- Принята модель управления клиентами из [docs/ClientManagement.md](/home/az/git/awg/docs/ClientManagement.md).
+- Принята структура из [docs/ServerLayout.md](ServerLayout.md).
+- Принята модель управления клиентами из [docs/ClientManagement.md](ClientManagement.md).
 - `awg-quick@awg0.service` является основным unit управления.
 
 ## Назначение файлов
@@ -128,7 +128,7 @@ CLIENTS_DIR=/var/lib/amnezia/clients
 QR_DIR=/var/lib/amnezia/qr
 STATE_DIR=/var/lib/amnezia/state
 REGISTRY_FILE=/var/lib/amnezia/state/clients.tsv
-EXPORT_DIR=/home/awgesrv/export
+EXPORT_DIR=/home/<operator_user>/export
 
 SERVER_AWG_JC=6
 SERVER_AWG_JMIN=50

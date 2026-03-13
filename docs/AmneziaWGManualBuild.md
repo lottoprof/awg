@@ -4,10 +4,10 @@
 Установить `AmneziaWG` по резервному сценарию `B`, если пакетный путь не сработал: вручную собрать kernel module и при необходимости пользовательские утилиты, затем проверить загрузку модуля и доступность `awg`/`awg-quick`.
 
 ## Входные условия
-- Выполнен этап из [docs/ServerPreparation.md](/home/az/git/awg/docs/ServerPreparation.md).
-- Выполнен этап из [docs/BootstrapSSH.md](/home/az/git/awg/docs/BootstrapSSH.md).
-- Выполнен этап из [docs/NetworkBase.md](/home/az/git/awg/docs/NetworkBase.md).
-- Основной сценарий из [docs/AmneziaWGInstall.md](/home/az/git/awg/docs/AmneziaWGInstall.md) не сработал или признан неподходящим.
+- Выполнен этап из [docs/ServerPreparation.md](ServerPreparation.md).
+- Выполнен этап из [docs/BootstrapSSH.md](BootstrapSSH.md).
+- Выполнен этап из [docs/NetworkBase.md](NetworkBase.md).
+- Основной сценарий из [docs/AmneziaWGInstall.md](AmneziaWGInstall.md) не сработал или признан неподходящим.
 - Есть рабочий вход по SSH новым административным пользователем.
 - Пользователь может выполнять `sudo`.
 - Целевая ОС: `Debian 12`.

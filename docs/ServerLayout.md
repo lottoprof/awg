@@ -20,7 +20,7 @@
   qr/
   state/
 
-/home/awgesrv/
+/home/<operator_user>/
   export/
 
 /usr/local/bin/
@@ -77,7 +77,7 @@ awg_clients/
 
 Это основное хранилище generated data. Эти каталоги считаются source of truth.
 
-## `/home/awgesrv/export`
+## `/home/<operator_user>/export`
 Здесь размещаем только временные копии файлов для передачи оператору.
 
 Правила:
@@ -124,7 +124,7 @@ awg-quick@awg0.service
 3. Пакетный `awg-quick` использует именно `/etc/amnezia/amneziawg/<name>.conf`, поэтому основной серверный конфиг должен лежать в этом каталоге, а не в корне `/etc/amnezia`.
 4. Shell-скрипт сохраняет клиентский `.conf` в `/var/lib/amnezia/clients`.
 5. Shell-скрипт сохраняет QR в `/var/lib/amnezia/qr`.
-6. Для выдачи оператору shell-скрипт копирует `.conf` и `.png` в `/home/awgesrv/export`.
+6. Для выдачи оператору shell-скрипт копирует `.conf` и `.png` в `/home/<operator_user>/export`.
 7. После изменения серверного конфига выполняется:
 ```bash
 systemctl restart awg-quick@awg0
@@ -158,7 +158,7 @@ systemctl restart awg-quick@awg0
 - Зафиксирована целевая структура каталогов нового сервера.
 - Зафиксировано место хранения `awg0.conf` и `params`.
 - Зафиксировано место хранения клиентских `.conf`, QR и state.
-- Зафиксировано, что `/home/awgesrv/export` является временным delivery buffer, а не основным хранилищем.
+- Зафиксировано, что `/home/<operator_user>/export` является временным delivery buffer, а не основным хранилищем.
 - Зафиксирована роль `awg-quick@awg0.service`.
 - Зафиксировано отсутствие отдельных unit-файлов на клиентов.
 

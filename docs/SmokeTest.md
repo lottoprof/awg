@@ -10,7 +10,7 @@
 - клиент выходит в интернет через туннель.
 
 ## Входные условия
-- Выполнен этап из [docs/ServerConfigInit.md](/home/az/git/awg/docs/ServerConfigInit.md).
+- Выполнен этап из [docs/ServerConfigInit.md](ServerConfigInit.md).
 - Скрипты `awg-add-client`, `awg-list-clients`, `awg-export-client`, `awg-revoke-client` уже размещены на сервере.
 - `AmneziaWG` установлен.
 - `awg-quick@awg0.service` доступен.
@@ -68,7 +68,7 @@ sudo awg-add-client test
 - выводит `client_id`;
 - показывает путь к `.conf`;
 - показывает путь к QR;
-- показывает путь в `/home/awgesrv/export`;
+- показывает путь в `/home/<operator_user>/export`;
 - показывает назначенный IP.
 
 ## Шаг 4. Проверка серверных файлов после добавления клиента
@@ -81,7 +81,7 @@ sudo tail -n 20 /etc/amnezia/amneziawg/awg0.conf
 sudo cat /var/lib/amnezia/state/clients.tsv
 ls -l /var/lib/amnezia/clients
 ls -l /var/lib/amnezia/qr
-ls -l /home/awgesrv/export
+ls -l /home/<operator_user>/export
 ```
 
 Ожидаемый результат:
@@ -89,7 +89,7 @@ ls -l /home/awgesrv/export
 - в `clients.tsv` появилась строка со статусом `active`;
 - в `clients/` создан `.conf`;
 - в `qr/` создан `.png`, если установлен `qrencode`.
-- в `/home/awgesrv/export` появились копии файлов для выдачи оператору с владельцем `awgesrv`.
+- в `/home/<operator_user>/export` появились копии файлов для выдачи оператору с владельцем `<operator_user>`.
 
 ## Шаг 5. Проверка списка клиентов
 Проверяем, что операторская команда корректно показывает состояние.
@@ -116,11 +116,11 @@ sudo awg-export-client client01_test
 Источники для оператора:
 - файл:
 ```text
-/home/awgesrv/export/client01_test.conf
+/home/<operator_user>/export/client01_test.conf
 ```
 - QR:
 ```text
-/home/awgesrv/export/client01_test.png
+/home/<operator_user>/export/client01_test.png
 ```
 
 ## Шаг 7. Проверка handshake на сервере

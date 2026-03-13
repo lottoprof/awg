@@ -117,7 +117,7 @@ apt-cache policy linux-image-amd64 linux-headers-amd64
 - проверить, собрался ли `DKMS`;
 - понять, совпадает ли собранный модуль с текущим ядром.
 
-Детальный сценарий остается в [docs/AmneziaWGInstall.md](/home/az/git/awg/docs/AmneziaWGInstall.md), но принцип фиксируем уже здесь:
+Детальный сценарий остается в [docs/AmneziaWGInstall.md](AmneziaWGInstall.md), но принцип фиксируем уже здесь:
 - если пакетный путь требует нового ядра, reboot делаем сразу;
 - если `DKMS` собрался под новое ядро, продолжаем только после reboot;
 - если пакетный путь не работает даже после нормализации ядра и headers, потом идем в fallback manual build.

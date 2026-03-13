@@ -4,7 +4,7 @@
 Зафиксировать, как на новом сервере будет устроено управление клиентами `AWG`: создание, учет, отзыв, хранение клиентских артефактов и обновление серверного конфига.
 
 ## Входные условия
-- Принята структура из [docs/ServerLayout.md](/home/az/git/awg/docs/ServerLayout.md).
+- Принята структура из [docs/ServerLayout.md](ServerLayout.md).
 - `AmneziaWG` установлен.
 - Серверный интерфейс управляется через `awg-quick@awg0.service`.
 - Основной серверный конфиг хранится в `/etc/amnezia/amneziawg/awg0.conf`.
@@ -48,7 +48,7 @@ script_srv/
 - QR пишем не рядом с конфигами, а в `/var/lib/amnezia/qr`;
 - служебный state выносим в `/var/lib/amnezia/state`;
 - читаем параметры из `/etc/amnezia/params`.
-- файлы для выдачи оператору дополнительно копируем в `/home/awgesrv/export`.
+- файлы для выдачи оператору дополнительно копируем в `/home/<operator_user>/export`.
 
 ## Размещение клиентских данных
 Принятая структура:
@@ -64,8 +64,8 @@ script_srv/
 - `state/` — реестр клиентов, индексы, служебные файлы.
 
 Отдельно:
-- `/home/awgesrv/export` — операторский каталог выдачи файлов для `scp` без `sudo`.
-- владельцем каталога должен быть операторский пользователь, например `awgesrv:awgesrv`.
+- `/home/<operator_user>/export` — операторский каталог выдачи файлов для `scp`.
+- владельцем каталога должен быть операторский пользователь, например `<operator_user>:<operator_user>`.
 - это временный delivery buffer, а не постоянное хранилище клиентских файлов.
 
 ## Именование клиентов
@@ -114,8 +114,8 @@ client03_laptop
 8. Генерирует клиентский `.conf`.
 9. Генерирует QR-код.
 10. Обновляет client registry в `/var/lib/amnezia/state/clients.tsv`.
-11. Копирует `.conf` и `.png` в `/home/awgesrv/export`.
-12. Выставляет владельца exported-файлов по владельцу каталога `/home/awgesrv/export`.
+11. Копирует `.conf` и `.png` в `/home/<operator_user>/export`.
+12. Выставляет владельца exported-файлов по владельцу каталога `/home/<operator_user>/export`.
 13. Выполняет:
 ```bash
 systemctl restart awg-quick@awg0
@@ -149,8 +149,8 @@ QR-код:
 
 Файлы для выдачи оператору:
 ```text
-/home/awgesrv/export/clientNN_name.conf
-/home/awgesrv/export/clientNN_name.png
+/home/<operator_user>/export/clientNN_name.conf
+/home/<operator_user>/export/clientNN_name.png
 ```
 
 Важно:
@@ -198,7 +198,7 @@ client02_laptop	laptop	10.66.66.3	BASE64_PUBLIC_KEY	revoked
 - оператор сначала вызывает `awg-list-clients`;
 - выбирает нужный `client_id`;
 - после этого вызывает `awg-export-client <client_id>`;
-- нужный `.conf` и `.png` копируются в `/home/awgesrv/export` для выдачи.
+- нужный `.conf` и `.png` копируются в `/home/<operator_user>/export` для выдачи.
 
 ## Как работает `awg-export-client`
 Текущая реализация:
@@ -207,8 +207,8 @@ client02_laptop	laptop	10.66.66.3	BASE64_PUBLIC_KEY	revoked
 3. Проверяет наличие клиента в `clients.tsv`.
 4. Берет `.conf` из `/var/lib/amnezia/clients`.
 5. Берет `.png` из `/var/lib/amnezia/qr`, если файл существует.
-6. Копирует файлы в `/home/awgesrv/export`.
-7. Выставляет владельца exported-файлов по владельцу каталога `/home/awgesrv/export`.
+6. Копирует файлы в `/home/<operator_user>/export`.
+7. Выставляет владельца exported-файлов по владельцу каталога `/home/<operator_user>/export`.
 8. Показывает оператору итоговые пути.
 
 ## Как работает `awg-revoke-client`
@@ -240,14 +240,14 @@ systemctl restart awg-quick@awg0
 --purge
 ```
 
-## Политика работы с `/home/awgesrv/export`
+## Политика работы с `/home/<operator_user>/export`
 Принимаем такой регламент:
-1. `awg-add-client` после создания клиента копирует `.conf` и `.png` в `/home/awgesrv/export`.
-2. Оператор забирает файлы из `/home/awgesrv/export`.
-3. После успешной передачи оператор очищает `/home/awgesrv/export`.
+1. `awg-add-client` после создания клиента копирует `.conf` и `.png` в `/home/<operator_user>/export`.
+2. Оператор забирает файлы из `/home/<operator_user>/export`.
+3. После успешной передачи оператор очищает `/home/<operator_user>/export`.
 4. Если файл нужно выдать повторно, оператор смотрит `client_id` через `awg-list-clients`.
 5. После этого выполняется `awg-export-client <client_id>`.
-6. Команда повторно копирует `.conf` и `.png` из `/var/lib/amnezia/clients` и `/var/lib/amnezia/qr` в `/home/awgesrv/export`.
+6. Команда повторно копирует `.conf` и `.png` из `/var/lib/amnezia/clients` и `/var/lib/amnezia/qr` в `/home/<operator_user>/export`.
 
 Вывод:
 - `export` не нужно хранить как второй архив;
