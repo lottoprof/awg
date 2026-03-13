@@ -1,6 +1,6 @@
 # Размещение файлов и управление AWG на новом сервере
 
-## Цель этапа
+## Цель
 Зафиксировать, как именно на новом сервере будут размещены конфигурация, клиентские артефакты, shell-утилиты и systemd-управление `AWG`.
 
 ## Входные условия
@@ -28,19 +28,6 @@
   awg-export-client
   awg-revoke-client
   awg-list-clients
-
-script_srv/
-  awg-add-client
-  awg-export-client
-  awg-revoke-client
-  awg-list-clients
-
-script_client/
-  awgctl
-
-awg_clients/
-  clientNN_name.conf
-  clientNN_name.png
 ```
 
 ## `/etc/amnezia`
@@ -87,24 +74,13 @@ awg_clients/
 - список доступных клиентов оператор сначала смотрит через `awg-list-clients`.
 
 ## `/usr/local/bin`
-Здесь размещаем операторские shell-команды.
+Здесь размещаем серверные backend-команды.
 
 Базовый набор:
 - `awg-add-client`
 - `awg-export-client`
 - `awg-revoke-client`
 - `awg-list-clients`
-
-Их исходники в репозитории храним в `script_srv/`.
-
-## `script_srv/`
-Здесь храним серверные backend-скрипты до установки на сервер.
-
-## `script_client/`
-Здесь храним локальные операторские скрипты рабочего места.
-
-## `awg_clients/`
-Здесь на рабочем месте оператора храним полученные клиентские `.conf` и `.png`.
 
 ## Systemd
 Основной unit управления:
@@ -121,7 +97,7 @@ awg-quick@awg0.service
 Целевая схема:
 1. Shell-скрипт генерирует ключи клиента.
 2. Shell-скрипт обновляет `/etc/amnezia/amneziawg/awg0.conf`.
-3. Пакетный `awg-quick` использует именно `/etc/amnezia/amneziawg/<name>.conf`, поэтому основной серверный конфиг должен лежать в этом каталоге, а не в корне `/etc/amnezia`.
+3. Пакетный `awg-quick` использует именно `/etc/amnezia/amneziawg/<name>.conf`.
 4. Shell-скрипт сохраняет клиентский `.conf` в `/var/lib/amnezia/clients`.
 5. Shell-скрипт сохраняет QR в `/var/lib/amnezia/qr`.
 6. Для выдачи оператору shell-скрипт копирует `.conf` и `.png` в `/home/<operator_user>/export`.
@@ -164,10 +140,3 @@ systemctl restart awg-quick@awg0
 
 ## Ожидаемый итог
 Следующие документы и shell-автоматизация будут строиться уже по целевой структуре нового сервера, а не по текущей реализации на существующем хосте.
-
-## Следующий этап
-После этого этапа логично оформить документ по управлению клиентами:
-- как должен работать `add-awg-client`;
-- как обновлять `awg0.conf`;
-- как хранить client registry и state;
-- когда делать `systemctl restart awg-quick@awg0`.

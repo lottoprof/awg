@@ -1,6 +1,6 @@
 # Первичная инициализация `/etc/amnezia/params`, `/etc/amnezia/amneziawg/awg0.conf` и каталогов
 
-## Цель этапа
+## Цель
 Подготовить на новом сервере минимальный рабочий набор файлов и каталогов для `AWG`:
 - `/etc/amnezia/params`
 - `/etc/amnezia/amneziawg/awg0.conf`
@@ -65,6 +65,22 @@ echo "$server_public"
 - `server_private` записываем только в `/etc/amnezia/params` и `/etc/amnezia/amneziawg/awg0.conf`;
 - `server_public` можно использовать в `params` и клиентских конфигах;
 - private key не должен попадать в историю shell или посторонние файлы.
+
+## Компрометация `server private key`
+Если `server private key` скомпрометирован, считать скомпрометированными все выпущенные клиентские конфиги, которые доверяют старому `SERVER_PUB_KEY`.
+
+Порядок действий:
+1. Сгенерировать новый `server_private` и новый `server_public`.
+2. Заменить `SERVER_PRIV_KEY` и `SERVER_PUB_KEY` в `/etc/amnezia/params`.
+3. Заменить `PrivateKey` в `/etc/amnezia/amneziawg/awg0.conf`.
+4. Перезапустить `awg-quick@awg0`.
+5. Перевыпустить все клиентские конфиги с новым `SERVER_PUB_KEY`.
+6. Передать пользователям новые `.conf` или QR.
+7. Старые клиентские конфиги считать недействительными и удалить их из каналов передачи, где это возможно.
+
+Правило:
+- замена только `PrivateKey` на сервере без перевыпуска клиентских конфигов не завершает ротацию;
+- после смены серверного ключа все клиенты должны получить новый `PublicKey` сервера.
 
 ## Шаг 4. Создание `/etc/amnezia/params`
 Создаем файл параметров вручную по принятому формату.
@@ -181,7 +197,7 @@ sudo grep '^PrivateKey = ' /etc/amnezia/amneziawg/awg0.conf
 - `SERVER_PRIV_KEY` <-> `PrivateKey`
 
 ## Шаг 8. Проверка чтения `params`
-Убедитесь, что файл можно безопасно `source`.
+Проверить, что файл можно безопасно `source`.
 
 Команда:
 ```bash
@@ -209,7 +225,7 @@ sudo systemctl start awg-quick@awg0
 sudo systemctl status awg-quick@awg0 --no-pager
 ```
 
-Примечание:
+Правило:
 - если сервис запускается до добавления клиентов, это нормально;
 - на этом этапе в `awg0.conf` может быть только `[Interface]`.
 
@@ -226,10 +242,3 @@ sudo systemctl status awg-quick@awg0 --no-pager
 - базовая конфигурация создана;
 - структура каталогов и права зафиксированы;
 - `awg-add-client` может работать на основе этих файлов без дополнительных ручных действий.
-
-## Следующий этап
-После этого этапа логично:
-- положить `awg-add-client`, `awg-list-clients`, `awg-revoke-client` в `/usr/local/bin`;
-- брать их из каталога `script_srv/`;
-- проверить первый `awg-add-client`;
-- затем оформить smoke-проверку клиентского подключения.

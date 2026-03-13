@@ -9,23 +9,20 @@
 - `templates/` — шаблоны конфигов
 - `awg_clients/` — локальный каталог для полученных клиентских `.conf` и `.png`
 
-## Порядок чтения документации
-Документы лучше читать и применять в таком порядке:
-
-1. [docs/DeploymentPlan.md](docs/DeploymentPlan.md)
-2. [docs/ServerPreparation.md](docs/ServerPreparation.md)
-3. [docs/AmneziaWGInstall.md](docs/AmneziaWGInstall.md)
-4. [docs/BootstrapSSH.md](docs/BootstrapSSH.md)
-5. [docs/NetworkBase.md](docs/NetworkBase.md)
-6. [docs/ServerLayout.md](docs/ServerLayout.md)
-7. [docs/ServerConfigFormat.md](docs/ServerConfigFormat.md)
-8. [docs/ServerConfigInit.md](docs/ServerConfigInit.md)
-9. [docs/ClientManagement.md](docs/ClientManagement.md)
-10. [docs/SmokeTest.md](docs/SmokeTest.md)
-11. [docs/OperatorWorkflow.md](docs/OperatorWorkflow.md)
-12. [docs/Awgctl.md](docs/Awgctl.md)
-13. [docs/AmneziaWGManualBuild.md](docs/AmneziaWGManualBuild.md)
-14. [docs/InstallChecklist.md](docs/InstallChecklist.md)
+## Порядок реализации
+1. [Спланировать систему развертывания](docs/DeploymentPlan.md)
+2. [Подготовить чистый сервер](docs/ServerPreparation.md)
+3. [Установить AmneziaWG пакетным способом](docs/AmneziaWGInstall.md)
+4. [Настроить безопасный SSH-доступ](docs/BootstrapSSH.md)
+5. [Подготовить сетевую основу и firewall](docs/NetworkBase.md)
+6. [Зафиксировать размещение файлов на сервере](docs/ServerLayout.md)
+7. [Зафиксировать формат серверных конфигов](docs/ServerConfigFormat.md)
+8. [Инициализировать `/etc/amnezia` и `/var/lib/amnezia`](docs/ServerConfigInit.md)
+9. [Настроить управление клиентами](docs/ClientManagement.md)
+10. [Провести smoke-test сервера и клиента](docs/SmokeTest.md)
+11. [Зафиксировать workflow оператора](docs/OperatorWorkflow.md)
+12. [Использовать локальный CLI `awgctl`](docs/Awgctl.md)
+13. [Перейти на manual build при необходимости](docs/AmneziaWGManualBuild.md)
 
 ## Скрипты
 Серверные:
