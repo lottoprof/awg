@@ -1,0 +1,238 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_NAME="awg-add-client"
+PARAMS_FILE="/etc/amnezia/params"
+SERVER_CONF="/etc/amnezia/amneziawg/awg0.conf"
+DEFAULT_BASE_DIR="/var/lib/amnezia"
+DEFAULT_EXPORT_DIR="/home/awgesrv/export"
+
+SERVER_CONF_BACKUP=""
+SERVER_CONF_MODIFIED=0
+CLIENT_CONF=""
+PNG_OUT=""
+
+cleanup_on_error() {
+    local exit_code=$?
+    if [ "$exit_code" -ne 0 ] && [ "$SERVER_CONF_MODIFIED" -eq 1 ] && [ -n "$SERVER_CONF_BACKUP" ]; then
+        cp "$SERVER_CONF_BACKUP" "$SERVER_CONF"
+    fi
+    exit "$exit_code"
+}
+
+trap cleanup_on_error EXIT
+
+fail() {
+    echo "ERROR: $*" >&2
+    exit 1
+}
+
+require_cmd() {
+    command -v "$1" >/dev/null 2>&1 || fail "missing command: $1"
+}
+
+sanitize_name() {
+    printf '%s' "${1:-noname}" \
+        | tr '[:upper:]' '[:lower:]' \
+        | sed -E 's/[^a-z0-9._-]+/_/g; s/^_+//; s/_+$//; s/__+/_/g'
+}
+
+next_client_number() {
+    find "$CLIENT_DIR" -maxdepth 1 -type f -name 'client*_*.conf' -printf '%f\n' 2>/dev/null \
+        | sed -En 's/^client([0-9]+)_.*/\1/p' \
+        | sort -n \
+        | tail -n 1
+}
+
+next_client_ip() {
+    local base_net used_ips octet
+    base_net=$(printf '%s' "$SERVER_AWG_IPV4" | awk -F'.' '{print $1 "." $2 "." $3}')
+    used_ips=$(
+        awk '/^AllowedIPs = /{print $3}' "$SERVER_CONF" \
+            | cut -d'/' -f1 \
+            | awk -F'.' 'NF==4 {print $4}'
+    )
+
+    octet=2
+    while printf '%s\n' "$used_ips" | grep -qx "$octet"; do
+        octet=$((octet + 1))
+    done
+
+    printf '%s.%s' "$base_net" "$octet"
+}
+
+append_registry_record() {
+    printf '%s\t%s\t%s\t%s\tactive\n' \
+        "$CLIENT_ID" \
+        "$HUMAN_NAME" \
+        "$CLIENT_IP" \
+        "$CLIENT_PUBLIC" >> "$REGISTRY_FILE"
+}
+
+if [ "${EUID}" -ne 0 ]; then
+    fail "run as root: sudo ${SCRIPT_NAME} <name>"
+fi
+
+require_cmd awg
+require_cmd systemctl
+require_cmd awk
+require_cmd sed
+
+[ -f "$PARAMS_FILE" ] || fail "params file not found: $PARAMS_FILE"
+[ -f "$SERVER_CONF" ] || fail "server config not found: $SERVER_CONF"
+
+set -a
+# shellcheck disable=SC1090
+. "$PARAMS_FILE"
+set +a
+
+: "${SERVER_AWG_IPV4:?SERVER_AWG_IPV4 is not set in $PARAMS_FILE}"
+: "${SERVER_PORT:?SERVER_PORT is not set in $PARAMS_FILE}"
+: "${SERVER_AWG_NIC:=awg0}"
+: "${SERVER_PUB_IP:=}"
+: "${SERVER_PRIV_KEY:=}"
+: "${SERVER_PUB_KEY:=}"
+: "${CLIENT_DNS_1:=1.1.1.1}"
+: "${CLIENT_DNS_2:=8.8.8.8}"
+: "${STORE_CLIENT:=y}"
+: "${USE_NFTABLES:=n}"
+: "${ALLOWED_IPS:=0.0.0.0/0}"
+: "${KEEPALIVE:=0}"
+: "${CLIENTS_DIR:=${DEFAULT_BASE_DIR}/clients}"
+: "${QR_DIR:=${DEFAULT_BASE_DIR}/qr}"
+: "${STATE_DIR:=${DEFAULT_BASE_DIR}/state}"
+: "${REGISTRY_FILE:=${STATE_DIR}/clients.tsv}"
+: "${EXPORT_DIR:=${DEFAULT_EXPORT_DIR}}"
+: "${SERVER_AWG_JC:?SERVER_AWG_JC is not set in $PARAMS_FILE}"
+: "${SERVER_AWG_JMIN:?SERVER_AWG_JMIN is not set in $PARAMS_FILE}"
+: "${SERVER_AWG_JMAX:?SERVER_AWG_JMAX is not set in $PARAMS_FILE}"
+: "${SERVER_AWG_S1:?SERVER_AWG_S1 is not set in $PARAMS_FILE}"
+: "${SERVER_AWG_S2:?SERVER_AWG_S2 is not set in $PARAMS_FILE}"
+: "${SERVER_AWG_H1:?SERVER_AWG_H1 is not set in $PARAMS_FILE}"
+: "${SERVER_AWG_H2:?SERVER_AWG_H2 is not set in $PARAMS_FILE}"
+: "${SERVER_AWG_H3:?SERVER_AWG_H3 is not set in $PARAMS_FILE}"
+: "${SERVER_AWG_H4:?SERVER_AWG_H4 is not set in $PARAMS_FILE}"
+
+CLIENT_DIR="$CLIENTS_DIR"
+BASE_DIR=$(dirname "$CLIENT_DIR")
+
+mkdir -p "$CLIENTS_DIR" "$QR_DIR" "$STATE_DIR"
+mkdir -p "$EXPORT_DIR"
+touch "$REGISTRY_FILE"
+
+chmod 750 "$BASE_DIR" "$CLIENTS_DIR" "$QR_DIR" "$STATE_DIR"
+chmod 640 "$REGISTRY_FILE"
+chmod 700 "$EXPORT_DIR" 2>/dev/null || true
+
+HUMAN_NAME=$(sanitize_name "${1:-noname}")
+[ -n "$HUMAN_NAME" ] || HUMAN_NAME="noname"
+
+LAST_NUM=$(next_client_number || true)
+if [ -z "${LAST_NUM:-}" ]; then
+    NEXT_NUM=1
+else
+    NEXT_NUM=$((10#$LAST_NUM + 1))
+fi
+
+NUM_PAD=$(printf '%02d' "$NEXT_NUM")
+CLIENT_ID="client${NUM_PAD}_${HUMAN_NAME}"
+CLIENT_IP=$(next_client_ip)
+CLIENT_IP_CIDR="${CLIENT_IP}/32"
+
+SERVER_PUBLIC=${SERVER_PUB_KEY:-}
+if [ -z "$SERVER_PUBLIC" ]; then
+    SERVER_PRIVATE=${SERVER_PRIV_KEY:-$(awk '/^PrivateKey = /{print $3; exit}' "$SERVER_CONF")}
+    [ -n "${SERVER_PRIVATE:-}" ] || fail "unable to read server private key from $SERVER_CONF"
+    SERVER_PUBLIC=$(printf '%s' "$SERVER_PRIVATE" | awg pubkey)
+fi
+
+CLIENT_PRIVATE=$(awg genkey)
+CLIENT_PUBLIC=$(printf '%s' "$CLIENT_PRIVATE" | awg pubkey)
+PSK=$(awg genpsk)
+
+ENDPOINT_HOST=${SERVER_PUB_IP:-$(hostname -I | awk '{print $1}')}
+[ -n "${ENDPOINT_HOST:-}" ] || fail "unable to determine endpoint host"
+
+CLIENT_CONF="${CLIENTS_DIR}/${CLIENT_ID}.conf"
+PNG_OUT="${QR_DIR}/${CLIENT_ID}.png"
+SERVER_CONF_BACKUP=$(mktemp)
+cp "$SERVER_CONF" "$SERVER_CONF_BACKUP"
+
+cat > "$CLIENT_CONF" <<EOF
+[Interface]
+PrivateKey = ${CLIENT_PRIVATE}
+Address = ${CLIENT_IP_CIDR}
+DNS = ${CLIENT_DNS_1},${CLIENT_DNS_2}
+Jc = ${SERVER_AWG_JC}
+Jmin = ${SERVER_AWG_JMIN}
+Jmax = ${SERVER_AWG_JMAX}
+S1 = ${SERVER_AWG_S1}
+S2 = ${SERVER_AWG_S2}
+H1 = ${SERVER_AWG_H1}
+H2 = ${SERVER_AWG_H2}
+H3 = ${SERVER_AWG_H3}
+H4 = ${SERVER_AWG_H4}
+
+[Peer]
+PublicKey = ${SERVER_PUBLIC}
+PresharedKey = ${PSK}
+Endpoint = ${ENDPOINT_HOST}:${SERVER_PORT}
+AllowedIPs = ${ALLOWED_IPS}
+PersistentKeepalive = ${KEEPALIVE}
+EOF
+
+chmod 640 "$CLIENT_CONF"
+
+[ "${STORE_CLIENT}" = "y" ] || fail "STORE_CLIENT is not enabled in $PARAMS_FILE"
+
+cat >> "$SERVER_CONF" <<EOF
+
+[Peer]
+# ${CLIENT_ID}
+PublicKey = ${CLIENT_PUBLIC}
+PresharedKey = ${PSK}
+AllowedIPs = ${CLIENT_IP_CIDR}
+EOF
+SERVER_CONF_MODIFIED=1
+
+if command -v qrencode >/dev/null 2>&1; then
+    qrencode -o "$PNG_OUT" < "$CLIENT_CONF"
+    chmod 644 "$PNG_OUT"
+
+    echo "QR в консоль:"
+    qrencode -t ansiutf8 < "$CLIENT_CONF"
+else
+    echo "WARN: qrencode is not installed; QR generation skipped" >&2
+    PNG_OUT=""
+fi
+
+append_registry_record
+
+cp "$CLIENT_CONF" "${EXPORT_DIR}/${CLIENT_ID}.conf"
+chown --reference="$EXPORT_DIR" "${EXPORT_DIR}/${CLIENT_ID}.conf"
+chmod 600 "${EXPORT_DIR}/${CLIENT_ID}.conf"
+
+if [ -n "$PNG_OUT" ] && [ -f "$PNG_OUT" ]; then
+    cp "$PNG_OUT" "${EXPORT_DIR}/${CLIENT_ID}.png"
+    chown --reference="$EXPORT_DIR" "${EXPORT_DIR}/${CLIENT_ID}.png"
+    chmod 600 "${EXPORT_DIR}/${CLIENT_ID}.png"
+fi
+
+systemctl restart "awg-quick@${SERVER_AWG_NIC}"
+systemctl is-active --quiet "awg-quick@${SERVER_AWG_NIC}" \
+    || fail "service awg-quick@${SERVER_AWG_NIC} is not active after restart"
+
+SERVER_CONF_MODIFIED=0
+rm -f "$SERVER_CONF_BACKUP"
+trap - EXIT
+
+echo "======================================="
+echo "Client:      ${CLIENT_ID}"
+echo "Conf:        ${CLIENT_CONF}"
+echo "QR PNG:      ${PNG_OUT:-not-generated}"
+echo "Export Conf: ${EXPORT_DIR}/${CLIENT_ID}.conf"
+echo "Export QR:   ${EXPORT_DIR}/${CLIENT_ID}.png"
+echo "IP:          ${CLIENT_IP_CIDR}"
+echo "Registry:    ${REGISTRY_FILE}"
+echo "======================================="

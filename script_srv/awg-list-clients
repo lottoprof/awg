@@ -1,0 +1,57 @@
+#!/bin/bash
+
+set -euo pipefail
+
+PARAMS_FILE="/etc/amnezia/params"
+DEFAULT_STATE_DIR="/var/lib/amnezia/state"
+DEFAULT_CLIENTS_DIR="/var/lib/amnezia/clients"
+DEFAULT_QR_DIR="/var/lib/amnezia/qr"
+
+fail() {
+    echo "ERROR: $*" >&2
+    exit 1
+}
+
+if [ "${EUID}" -ne 0 ]; then
+    fail "run as root: sudo awg-list-clients"
+fi
+
+if [ -f "$PARAMS_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$PARAMS_FILE"
+    set +a
+fi
+
+: "${STATE_DIR:=${DEFAULT_STATE_DIR}}"
+: "${CLIENTS_DIR:=${DEFAULT_CLIENTS_DIR}}"
+: "${QR_DIR:=${DEFAULT_QR_DIR}}"
+: "${REGISTRY_FILE:=${STATE_DIR}/clients.tsv}"
+
+[ -f "$REGISTRY_FILE" ] || fail "registry file not found: $REGISTRY_FILE"
+
+printf '%-22s %-18s %-15s %-8s %-6s %-6s\n' "CLIENT_ID" "NAME" "IP" "STATUS" "CONF" "QR"
+printf '%-22s %-18s %-15s %-8s %-6s %-6s\n' "---------" "----" "--" "------" "----" "--"
+
+while IFS=$'\t' read -r client_id name ip _public_key status; do
+    [ -n "${client_id:-}" ] || continue
+
+    conf_status="no"
+    qr_status="no"
+
+    if [ -f "${CLIENTS_DIR}/${client_id}.conf" ]; then
+        conf_status="yes"
+    fi
+
+    if [ -f "${QR_DIR}/${client_id}.png" ]; then
+        qr_status="yes"
+    fi
+
+    printf '%-22s %-18s %-15s %-8s %-6s %-6s\n' \
+        "$client_id" \
+        "${name:-}" \
+        "${ip:-}" \
+        "${status:-unknown}" \
+        "$conf_status" \
+        "$qr_status"
+done < "$REGISTRY_FILE"

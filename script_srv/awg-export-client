@@ -1,0 +1,77 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_NAME="awg-export-client"
+PARAMS_FILE="/etc/amnezia/params"
+DEFAULT_STATE_DIR="/var/lib/amnezia/state"
+DEFAULT_CLIENTS_DIR="/var/lib/amnezia/clients"
+DEFAULT_QR_DIR="/var/lib/amnezia/qr"
+DEFAULT_EXPORT_DIR="/home/awgesrv/export"
+
+fail() {
+    echo "ERROR: $*" >&2
+    exit 1
+}
+
+usage() {
+    cat <<EOF
+Usage:
+  sudo ${SCRIPT_NAME} <client_id>
+EOF
+}
+
+if [ "${EUID}" -ne 0 ]; then
+    fail "run as root: sudo ${SCRIPT_NAME} <client_id>"
+fi
+
+[ $# -eq 1 ] || {
+    usage
+    exit 1
+}
+
+CLIENT_ID="$1"
+
+if [ -f "$PARAMS_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$PARAMS_FILE"
+    set +a
+fi
+
+: "${STATE_DIR:=${DEFAULT_STATE_DIR}}"
+: "${CLIENTS_DIR:=${DEFAULT_CLIENTS_DIR}}"
+: "${QR_DIR:=${DEFAULT_QR_DIR}}"
+: "${REGISTRY_FILE:=${STATE_DIR}/clients.tsv}"
+: "${EXPORT_DIR:=${DEFAULT_EXPORT_DIR}}"
+
+[ -f "$REGISTRY_FILE" ] || fail "registry file not found: $REGISTRY_FILE"
+grep -q "^${CLIENT_ID}[[:space:]]" "$REGISTRY_FILE" || fail "client not found in registry: $CLIENT_ID"
+
+CLIENT_CONF="${CLIENTS_DIR}/${CLIENT_ID}.conf"
+CLIENT_PNG="${QR_DIR}/${CLIENT_ID}.png"
+EXPORT_CONF="${EXPORT_DIR}/${CLIENT_ID}.conf"
+EXPORT_PNG="${EXPORT_DIR}/${CLIENT_ID}.png"
+
+[ -f "$CLIENT_CONF" ] || fail "client config not found: $CLIENT_CONF"
+
+mkdir -p "$EXPORT_DIR"
+cp "$CLIENT_CONF" "$EXPORT_CONF"
+chown --reference="$EXPORT_DIR" "$EXPORT_CONF"
+chmod 600 "$EXPORT_CONF"
+
+if [ -f "$CLIENT_PNG" ]; then
+    cp "$CLIENT_PNG" "$EXPORT_PNG"
+    chown --reference="$EXPORT_DIR" "$EXPORT_PNG"
+    chmod 600 "$EXPORT_PNG"
+    QR_STATUS="$EXPORT_PNG"
+else
+    QR_STATUS="not-generated"
+fi
+
+echo "======================================="
+echo "Client:      ${CLIENT_ID}"
+echo "Export Conf: ${EXPORT_CONF}"
+echo "Export QR:   ${QR_STATUS}"
+echo "Registry:    ${REGISTRY_FILE}"
+echo "======================================="

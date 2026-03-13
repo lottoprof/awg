@@ -1,0 +1,165 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_NAME="awg-revoke-client"
+PARAMS_FILE="/etc/amnezia/params"
+SERVER_CONF="/etc/amnezia/amneziawg/awg0.conf"
+DEFAULT_STATE_DIR="/var/lib/amnezia/state"
+DEFAULT_CLIENTS_DIR="/var/lib/amnezia/clients"
+DEFAULT_QR_DIR="/var/lib/amnezia/qr"
+
+SERVER_CONF_BACKUP=""
+REGISTRY_BACKUP=""
+SERVER_CONF_MODIFIED=0
+REGISTRY_MODIFIED=0
+
+cleanup_on_error() {
+    local exit_code=$?
+    if [ "$exit_code" -ne 0 ]; then
+        if [ "$SERVER_CONF_MODIFIED" -eq 1 ] && [ -n "$SERVER_CONF_BACKUP" ]; then
+            cp "$SERVER_CONF_BACKUP" "$SERVER_CONF"
+        fi
+        if [ "$REGISTRY_MODIFIED" -eq 1 ] && [ -n "$REGISTRY_BACKUP" ]; then
+            cp "$REGISTRY_BACKUP" "$REGISTRY_FILE"
+        fi
+    fi
+    exit "$exit_code"
+}
+
+trap cleanup_on_error EXIT
+
+fail() {
+    echo "ERROR: $*" >&2
+    exit 1
+}
+
+usage() {
+    cat <<EOF
+Usage:
+  sudo ${SCRIPT_NAME} <client_id> [--purge]
+EOF
+}
+
+if [ "${EUID}" -ne 0 ]; then
+    fail "run as root: sudo ${SCRIPT_NAME} <client_id> [--purge]"
+fi
+
+[ $# -ge 1 ] || {
+    usage
+    exit 1
+}
+
+CLIENT_ID=""
+PURGE=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --purge)
+            PURGE=1
+            ;;
+        -*)
+            fail "unknown option: $arg"
+            ;;
+        *)
+            if [ -n "$CLIENT_ID" ]; then
+                fail "only one client_id is supported"
+            fi
+            CLIENT_ID="$arg"
+            ;;
+    esac
+done
+
+[ -n "$CLIENT_ID" ] || fail "client_id is required"
+
+if [ -f "$PARAMS_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$PARAMS_FILE"
+    set +a
+fi
+
+: "${SERVER_AWG_NIC:=awg0}"
+: "${STATE_DIR:=${DEFAULT_STATE_DIR}}"
+: "${CLIENTS_DIR:=${DEFAULT_CLIENTS_DIR}}"
+: "${QR_DIR:=${DEFAULT_QR_DIR}}"
+: "${REGISTRY_FILE:=${STATE_DIR}/clients.tsv}"
+
+[ -f "$SERVER_CONF" ] || fail "server config not found: $SERVER_CONF"
+[ -f "$REGISTRY_FILE" ] || fail "registry file not found: $REGISTRY_FILE"
+
+grep -q "^${CLIENT_ID}[[:space:]]" "$REGISTRY_FILE" || fail "client not found in registry: $CLIENT_ID"
+
+SERVER_CONF_BACKUP=$(mktemp)
+REGISTRY_BACKUP=$(mktemp)
+cp "$SERVER_CONF" "$SERVER_CONF_BACKUP"
+cp "$REGISTRY_FILE" "$REGISTRY_BACKUP"
+
+awk -v client_id="$CLIENT_ID" '
+BEGIN {
+    block = ""
+    in_peer = 0
+}
+function flush_block() {
+    if (block == "") {
+        return
+    }
+    if (block !~ "\\[Peer\\]\n# " client_id "(\n|$)") {
+        printf "%s", block
+    }
+    block = ""
+}
+{
+    if ($0 == "[Peer]") {
+        flush_block()
+        in_peer = 1
+        block = $0 "\n"
+        next
+    }
+
+    if (in_peer == 1) {
+        block = block $0 "\n"
+        next
+    }
+
+    print
+}
+END {
+    flush_block()
+}
+' "$SERVER_CONF_BACKUP" > "$SERVER_CONF"
+SERVER_CONF_MODIFIED=1
+
+awk -F '\t' -v OFS='\t' -v client_id="$CLIENT_ID" '
+{
+    if ($1 == client_id) {
+        $5 = "revoked"
+    }
+    print
+}
+' "$REGISTRY_BACKUP" > "$REGISTRY_FILE"
+REGISTRY_MODIFIED=1
+
+if [ "$PURGE" -eq 1 ]; then
+    rm -f "${CLIENTS_DIR}/${CLIENT_ID}.conf" "${QR_DIR}/${CLIENT_ID}.png"
+fi
+
+systemctl restart "awg-quick@${SERVER_AWG_NIC}"
+systemctl is-active --quiet "awg-quick@${SERVER_AWG_NIC}" \
+    || fail "service awg-quick@${SERVER_AWG_NIC} is not active after restart"
+
+SERVER_CONF_MODIFIED=0
+REGISTRY_MODIFIED=0
+rm -f "$SERVER_CONF_BACKUP" "$REGISTRY_BACKUP"
+trap - EXIT
+
+echo "======================================="
+echo "Client:      ${CLIENT_ID}"
+echo "Status:      revoked"
+if [ "$PURGE" -eq 1 ]; then
+    echo "Artifacts:   purged"
+else
+    echo "Artifacts:   retained"
+fi
+echo "Registry:    ${REGISTRY_FILE}"
+echo "======================================="

@@ -1,0 +1,15 @@
+[Interface]
+Address = 10.66.66.1/24
+ListenPort = 443
+PrivateKey = <server_private_key>
+Jc = 6
+Jmin = 50
+Jmax = 1000
+S1 = 40
+S2 = 79
+H1 = 760714308
+H2 = 342415505
+H3 = 91894224
+H4 = 675799984
+
+# Client peers are appended below by awg-add-client.

@@ -1,0 +1,199 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_NAME="awgctl"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DEFAULT_OUTPUT_DIR="${REPO_ROOT}/awg_clients"
+
+: "${AWGCTL_HOST:=awgesrv}"
+: "${AWGCTL_OUTPUT_DIR:=${DEFAULT_OUTPUT_DIR}}"
+: "${AWGCTL_REMOTE_EXPORT_DIR:=/home/awgesrv/export}"
+
+REMOTE_OUTPUT=""
+
+fail() {
+    echo "ERROR: $*" >&2
+    exit 1
+}
+
+usage() {
+    cat <<EOF
+Usage:
+  ${SCRIPT_NAME} list-clients
+  ${SCRIPT_NAME} add-client <name>
+  ${SCRIPT_NAME} export-client <client_id>
+  ${SCRIPT_NAME} revoke-client <client_id>
+
+Environment:
+  AWGCTL_HOST              SSH alias or host (default: awgesrv)
+  AWGCTL_OUTPUT_DIR        Local directory for downloaded files
+  AWGCTL_REMOTE_EXPORT_DIR Remote export directory
+EOF
+}
+
+require_cmd() {
+    command -v "$1" >/dev/null 2>&1 || fail "missing command: $1"
+}
+
+run_remote() {
+    local use_sudo="$1"
+    shift
+
+    local tmp
+    tmp="$(mktemp)"
+
+    local -a cmd=(ssh "$AWGCTL_HOST")
+    if [ "$use_sudo" -eq 1 ]; then
+        cmd+=(sudo "$@")
+    else
+        cmd+=("$@")
+    fi
+
+    if ! "${cmd[@]}" | tee "$tmp"; then
+        local status=${PIPESTATUS[0]}
+        REMOTE_OUTPUT="$(cat "$tmp")"
+        rm -f "$tmp"
+        return "$status"
+    fi
+
+    REMOTE_OUTPUT="$(cat "$tmp")"
+    rm -f "$tmp"
+}
+
+extract_client_id() {
+    printf '%s\n' "$REMOTE_OUTPUT" | awk '/^Client:[[:space:]]+/ {print $2; exit}'
+}
+
+list_remote_artifacts() {
+    local client_id="$1"
+
+    ssh "$AWGCTL_HOST" sh -s -- "$AWGCTL_REMOTE_EXPORT_DIR" "$client_id" <<'EOF'
+export_dir="$1"
+client_id="$2"
+
+for f in \
+    "$export_dir/$client_id.conf" \
+    "$export_dir/$client_id.png"
+do
+    [ -f "$f" ] && printf '%s\n' "$f"
+done
+EOF
+}
+
+download_artifacts() {
+    local client_id="$1"
+    local remote_files
+    local conf_found=0
+
+    mkdir -p "$AWGCTL_OUTPUT_DIR"
+
+    remote_files="$(list_remote_artifacts "$client_id")"
+    [ -n "$remote_files" ] || fail "no exported files found for ${client_id} in ${AWGCTL_REMOTE_EXPORT_DIR}"
+
+    while IFS= read -r remote_file; do
+        [ -n "$remote_file" ] || continue
+
+        case "$remote_file" in
+            *.conf)
+                conf_found=1
+                ;;
+        esac
+
+        rsync -a "${AWGCTL_HOST}:${remote_file}" "${AWGCTL_OUTPUT_DIR}/"
+    done <<< "$remote_files"
+
+    [ "$conf_found" -eq 1 ] || fail "config file was not exported for ${client_id}"
+
+    cleanup_remote_artifacts "$client_id" "$remote_files"
+
+    echo "Local files:"
+    printf '%s\n' "$remote_files" \
+        | sed "s#^${AWGCTL_REMOTE_EXPORT_DIR}#${AWGCTL_OUTPUT_DIR}#"
+}
+
+cleanup_remote_artifacts() {
+    local client_id="$1"
+    local remote_files="$2"
+
+    local -a rm_args=()
+    while IFS= read -r remote_file; do
+        [ -n "$remote_file" ] || continue
+        rm_args+=("$remote_file")
+    done <<< "$remote_files"
+
+    [ "${#rm_args[@]}" -gt 0 ] || return 0
+
+    ssh "$AWGCTL_HOST" rm -f "${rm_args[@]}" \
+        || fail "downloaded files for ${client_id}, but failed to clean remote export files"
+}
+
+list_clients() {
+    run_remote 1 awg-list-clients
+}
+
+add_client() {
+    local name="$1"
+
+    run_remote 1 awg-add-client "$name"
+
+    local client_id
+    client_id="$(extract_client_id)"
+    [ -n "$client_id" ] || fail "unable to parse client_id from awg-add-client output"
+
+    download_artifacts "$client_id"
+}
+
+export_client() {
+    local client_id="$1"
+
+    run_remote 1 awg-export-client "$client_id"
+    download_artifacts "$client_id"
+}
+
+revoke_client() {
+    local client_id="$1"
+    run_remote 1 awg-revoke-client "$client_id"
+}
+
+main() {
+    require_cmd ssh
+    require_cmd rsync
+    require_cmd awk
+    require_cmd sed
+
+    [ $# -ge 1 ] || {
+        usage
+        exit 1
+    }
+
+    local subcommand="$1"
+    shift
+
+    case "$subcommand" in
+        list-clients)
+            [ $# -eq 0 ] || fail "list-clients does not accept arguments"
+            list_clients
+            ;;
+        add-client)
+            [ $# -eq 1 ] || fail "add-client requires <name>"
+            add_client "$1"
+            ;;
+        export-client)
+            [ $# -eq 1 ] || fail "export-client requires <client_id>"
+            export_client "$1"
+            ;;
+        revoke-client)
+            [ $# -eq 1 ] || fail "revoke-client requires <client_id>"
+            revoke_client "$1"
+            ;;
+        -h|--help|help)
+            usage
+            ;;
+        *)
+            fail "unknown subcommand: ${subcommand}"
+            ;;
+    esac
+}
+
+main "$@"
