@@ -11,18 +11,20 @@
 
 ## Порядок реализации
 1. [Спланировать систему развертывания](docs/DeploymentPlan.md)
-2. [Подготовить чистый сервер](docs/ServerPreparation.md)
-3. [Установить AmneziaWG пакетным способом](docs/AmneziaWGInstall.md)
-4. [Настроить безопасный SSH-доступ](docs/BootstrapSSH.md)
-5. [Подготовить сетевую основу и firewall](docs/NetworkBase.md)
-6. [Зафиксировать размещение файлов на сервере](docs/ServerLayout.md)
-7. [Зафиксировать формат серверных конфигов](docs/ServerConfigFormat.md)
-8. [Инициализировать `/etc/amnezia` и `/var/lib/amnezia`](docs/ServerConfigInit.md)
-9. [Настроить управление клиентами](docs/ClientManagement.md)
-10. [Провести smoke-test сервера и клиента](docs/SmokeTest.md)
-11. [Зафиксировать workflow оператора](docs/OperatorWorkflow.md)
-12. [Использовать локальный CLI `awgctl`](docs/Awgctl.md)
-13. [Перейти на manual build при необходимости](docs/AmneziaWGManualBuild.md)
+2. [Заполнить единый манифест для AI-агента](docs/AgentManifest.md)
+3. [Прочитать правила выполнения для AI-агента](docs/AgentExecutionRules.md)
+4. [Подготовить чистый сервер](docs/ServerPreparation.md)
+5. [Установить AmneziaWG пакетным способом](docs/AmneziaWGInstall.md)
+6. [Настроить безопасный SSH-доступ](docs/BootstrapSSH.md)
+7. [Подготовить сетевую основу и firewall](docs/NetworkBase.md)
+8. [Зафиксировать размещение файлов на сервере](docs/ServerLayout.md)
+9. [Зафиксировать формат серверных конфигов](docs/ServerConfigFormat.md)
+10. [Инициализировать `/etc/amnezia` и `/var/lib/amnezia`](docs/ServerConfigInit.md)
+11. [Настроить управление клиентами](docs/ClientManagement.md)
+12. [Провести smoke-test сервера и клиента](docs/SmokeTest.md)
+13. [Зафиксировать workflow оператора](docs/OperatorWorkflow.md)
+14. [Использовать локальный CLI `awgctl`](docs/Awgctl.md)
+15. [Перейти на manual build при необходимости](docs/AmneziaWGManualBuild.md)
 
 ## Скрипты
 Серверные:
