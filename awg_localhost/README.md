@@ -8,6 +8,7 @@
 - `awg_clients/` для полученных клиентских `.conf` и `.png`.
 
 ## Текущее содержимое
+- `AWG20_LOCAL_INSTALL.md` — локальная инструкция по установке `AmneziaWG` с акцентом на kernel module и переход к `AWG 2.0`;
 - `postup.sh` — проектная правка `PostUp` для общего shared-state `novpn/ru_nets`;
 - `postdown.sh` — проектная правка `PostDown`, которая не чистит общий shared-state, пока активен хотя бы один `AWG`-интерфейс.
 
