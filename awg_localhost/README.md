@@ -11,6 +11,10 @@
 - `AWG20_LOCAL_INSTALL.md` — локальная инструкция по установке `AmneziaWG` с акцентом на kernel module и переход к `AWG 2.0`;
 - `postup.sh` — проектная правка `PostUp` для общего shared-state `novpn/ru_nets`;
 - `postdown.sh` — проектная правка `PostDown`, которая не чистит общий shared-state, пока активен хотя бы один `AWG`-интерфейс.
+- `novpn-recover.sh` — локальный recovery-скрипт для повторной сборки `novpn` без перезапуска `AWG`.
+- `awg-resume-restart.sh` — helper-скрипт для отдельного `systemd service`, который ждет WAN route и перезапускает активный `awg-quick@<instance>`.
+- `awg-resume-restart.service` — `systemd unit`, который запускает helper-скрипт после `resume`.
+- `awg-novpn-resume.sh` — hook для `systemd system-sleep`, который после `resume` только запускает `awg-resume-restart.service`.
 
 ## Исходная точка
 Первоначальные версии локальных скриптов зафиксированы в git в commit:
