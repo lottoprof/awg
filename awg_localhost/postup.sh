@@ -95,6 +95,35 @@ ensure_mangle_rules() {
         iptables -t mangle -I POSTROUTING -j CONNMARK --save-mark
 }
 
+verify_novpn_state() {
+    local wan_gw="$1"
+    local wan_if="$2"
+    local route_out
+
+    ip rule show | grep -Fq "fwmark 0xc8 lookup novpn" || {
+        echo "Error: fwmark 200 rule for table novpn is missing"
+        return 1
+    }
+
+    ip route show table novpn | grep -Fq "default via $wan_gw dev $wan_if" || {
+        echo "Error: novpn default route is missing or incorrect"
+        ip route show table novpn || true
+        return 1
+    }
+
+    route_out="$(ip route get 77.88.8.8 mark 0xc8 2>&1)" || {
+        echo "Error: failed to resolve marked route via novpn"
+        echo "$route_out"
+        return 1
+    }
+
+    [[ "$route_out" == *"table novpn"* && "$route_out" == *"dev $wan_if"* ]] || {
+        echo "Error: marked RU route does not use novpn/WAN"
+        echo "$route_out"
+        return 1
+    }
+}
+
 main() {
     local wan_gw
     local wan_if
@@ -118,6 +147,8 @@ main() {
     ensure_novpn_route "$wan_gw" "$wan_if"
     ensure_novpn_rule
     ensure_mangle_rules
+    verify_novpn_state "$wan_gw" "$wan_if" || \
+        echo "Error: novpn verification failed, keeping interface up for manual inspection"
 
     echo "PostUp completed successfully."
 }
