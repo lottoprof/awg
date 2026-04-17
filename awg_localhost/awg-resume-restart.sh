@@ -9,9 +9,8 @@ log() {
     echo "$*"
 }
 
-active_instance() {
-    systemctl list-units --type=service --state=active 'awg-quick@*.service' --no-legend \
-        | awk 'NR == 1 { print $1 }'
+active_awg_interfaces() {
+    ip -o link show type amneziawg 2>/dev/null | awk -F': ' '{print $2}' | awk '{print $1}'
 }
 
 get_wan_gateway() {
@@ -45,7 +44,7 @@ wait_for_wan() {
 }
 
 main() {
-    local unit
+    local interfaces
 
     log "resume service started"
 
@@ -54,16 +53,17 @@ main() {
         exit 1
     }
 
-    unit="$(active_instance)"
+    interfaces="$(active_awg_interfaces || true)"
 
-    if [[ -z "$unit" ]]; then
-        log "No active awg-quick instance found, nothing to restart"
+    if [[ -z "$interfaces" ]]; then
+        log "No active AWG interfaces found in kernel, nothing to recover"
         exit 0
     fi
 
-    log "Restarting $unit"
-    systemctl restart "$unit"
-    log "Restarted $unit successfully"
+    log "Active AWG interfaces in kernel: $(printf '%s' "$interfaces" | tr '\n' ' ')"
+    log "Recovering novpn/policy routing without awg restart"
+    /etc/amnezia/amneziawg/novpn-recover.sh
+    log "Recovered novpn/policy routing successfully"
 }
 
 main "$@"
