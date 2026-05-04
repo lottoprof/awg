@@ -3,14 +3,17 @@ set -euo pipefail
 
 WAN_WAIT_RETRIES=45
 WAN_WAIT_SLEEP=1
+STATE_FILE="/run/awg-resume-active.list"
+PENDING_FILE="/run/awg-resume-pending"
 
 log() {
     logger -t awg-resume-restart "$*"
     echo "$*"
 }
 
-active_awg_interfaces() {
-    ip -o link show type amneziawg 2>/dev/null | awk -F': ' '{print $2}' | awk '{print $1}'
+saved_awg_units() {
+    [[ -f "$STATE_FILE" ]] || return 0
+    sed '/^$/d' "$STATE_FILE"
 }
 
 get_wan_gateway() {
@@ -44,26 +47,40 @@ wait_for_wan() {
 }
 
 main() {
-    local interfaces
+    local units
+    local unit
 
     log "resume service started"
+
+    if [[ ! -f "$PENDING_FILE" ]]; then
+        log "No pending resume restore marker, nothing to restart"
+        exit 0
+    fi
 
     wait_for_wan || {
         log "WAN route not ready after $WAN_WAIT_RETRIES attempts"
         exit 1
     }
 
-    interfaces="$(active_awg_interfaces || true)"
+    units="$(saved_awg_units || true)"
 
-    if [[ -z "$interfaces" ]]; then
-        log "No active AWG interfaces found in kernel, nothing to recover"
+    if [[ -z "$units" ]]; then
+        log "No saved AWG units from suspend, nothing to restart"
         exit 0
     fi
 
-    log "Active AWG interfaces in kernel: $(printf '%s' "$interfaces" | tr '\n' ' ')"
-    log "Recovering novpn/policy routing without awg restart"
-    /etc/amnezia/amneziawg/novpn-recover.sh
-    log "Recovered novpn/policy routing successfully"
+    log "Restarting saved AWG units after WAN recovery: $(printf '%s' "$units" | tr '\n' ' ')"
+
+    while IFS= read -r unit; do
+        [[ -n "$unit" ]] || continue
+        systemctl reset-failed "$unit" || true
+        systemctl start "$unit"
+        log "Started $unit"
+    done < <(printf '%s\n' "$units")
+
+    rm -f "$STATE_FILE"
+    rm -f "$PENDING_FILE"
+    log "Restored saved AWG units successfully"
 }
 
 main "$@"

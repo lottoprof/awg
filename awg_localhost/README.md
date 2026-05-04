@@ -12,9 +12,10 @@
 - `postup.sh` — проектная правка `PostUp` для общего shared-state `novpn/ru_nets`;
 - `postdown.sh` — проектная правка `PostDown`, которая не чистит общий shared-state, пока активен хотя бы один `AWG`-интерфейс.
 - `novpn-recover.sh` — локальный recovery-скрипт для повторной сборки `novpn` без перезапуска `AWG`.
-- `awg-resume-restart.sh` — helper-скрипт для отдельного `systemd service`, который ждет WAN route, проверяет живые `AWG`-интерфейсы в ядре и восстанавливает только `novpn/policy routing` без `awg restart`.
+- `awg-resume-restart.sh` — helper-скрипт для отдельного `systemd service`, который ждет WAN route и поднимает только те `awg-quick@...`, которые были активны перед `suspend`.
 - `awg-resume-restart.service` — `systemd unit`, который запускает helper-скрипт после `resume`.
-- `awg-novpn-resume.sh` — hook для `systemd system-sleep`, который после `resume` только запускает `awg-resume-restart.service`.
+- `90-awg-resume-dispatcher` — `NetworkManager-dispatcher` hook, который при возврате default route запускает `awg-resume-restart.service`.
+- `awg-novpn-resume.sh` — hook для `systemd system-sleep`, который перед `suspend` сохраняет активные `awg-quick@...`, полностью их останавливает, а после `resume` только помечает pending restore.
 
 ## Исходная точка
 Первоначальные версии локальных скриптов зафиксированы в git в commit:

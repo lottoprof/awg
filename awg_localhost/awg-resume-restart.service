@@ -1,7 +1,6 @@
 [Unit]
 Description=Restart active AWG instance after resume
-After=network.target NetworkManager.service
-Wants=network.target
+After=NetworkManager.service
 
 [Service]
 Type=oneshot

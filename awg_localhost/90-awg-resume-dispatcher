@@ -1,0 +1,25 @@
+#!/bin/bash
+set -euo pipefail
+
+STATE_FILE="/run/awg-resume-active.list"
+PENDING_FILE="/run/awg-resume-pending"
+
+nm_is_active() {
+    systemctl is-active --quiet NetworkManager.service
+}
+
+wan_ready() {
+    ip route show default 0.0.0.0/0 | grep -q " via "
+}
+
+main() {
+    [[ -f "$PENDING_FILE" ]] || exit 0
+    [[ -f "$STATE_FILE" ]] || exit 0
+
+    nm_is_active || exit 0
+    wan_ready || exit 0
+
+    systemctl start awg-resume-restart.service
+}
+
+main "$@"
